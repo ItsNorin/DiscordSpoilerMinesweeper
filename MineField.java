@@ -38,14 +38,26 @@ public class MineField {
 
 	public static String toString(int mineField[][]) {
 		String result = "";
+		Random rand = new Random();
 
-		final String emoteNumbers[] = {":stop_button:",":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:"};
+		final String emoteNumbers[] = {":zero:",":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:"};
 		final String bomb = ":bomb:";
 		final String spoiler = "||";
 		
+		int startX, startY;
+		
+		do {
+			startX = rand.nextInt(mineField.length);
+			startY = rand.nextInt(mineField.length);
+		} while(mineField[startX][startY] != 0);
+		
 		for(int x = 0; x < mineField.length; x++) {
-			for(int y = 0; y < mineField[x].length; y++) 
-				result += spoiler + ((mineField[x][y] == -1) ? bomb : emoteNumbers[mineField[x][y]]) + spoiler + " ";
+			for(int y = 0; y < mineField[x].length; y++) {
+				if(x == startX && y == startY)
+					result += ((mineField[x][y] == -1) ? bomb : emoteNumbers[mineField[x][y]]) + " ";
+				else
+					result += spoiler + ((mineField[x][y] == -1) ? bomb : emoteNumbers[mineField[x][y]]) + spoiler + " ";
+			}
 			result += "\n";
 		}
 		return result;
@@ -63,12 +75,7 @@ public class MineField {
 			} catch(Exception e) {}
 		}
 		
-		while(mines <= 0 || mines >= size * 4)  {
-			try {
-				System.out.print("Enter number of mines: ");
-				mines = in.nextInt();
-			} catch(Exception e) {}
-		}
+		mines = size / 2 + new Random().nextInt(size);
 		
 		in.close();
 		
