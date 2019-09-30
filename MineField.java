@@ -48,9 +48,9 @@ public class MineField {
 		for(int x = 0; x < size; x++) {
 			for(int y = 0; y < size; y++) {
 				String cellStr = getCellString(field, new Point(x,y));
-				if(x != start.x && y != start.y) 
-					cellStr = SPOILER + cellStr + SPOILER + " ";
-				result += cellStr;	
+				if(!(x == start.x && y == start.y)) 
+					cellStr = SPOILER + cellStr + SPOILER;
+				result += cellStr + " ";	
 			}
 			result += "\n";
 		}
