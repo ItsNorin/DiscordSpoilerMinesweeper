@@ -42,7 +42,7 @@ public class MineField {
 		do {
 			start.x = rand.nextInt(size);
 			start.y = rand.nextInt(size);
-		} while (field.contains(start));
+		} while (getCellString(field, start) != EMOTE_NUMBERS[0]);
 		
 		// create string
 		for(int x = 0; x < size; x++) {
