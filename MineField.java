@@ -3,14 +3,13 @@ package main;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Random;
-
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
-
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -20,121 +19,193 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 /**
- * Discord Spoiler Minesweeper text message generator Generates and copies
- * fields of chosen size to user's clipboard
+ * Discord Spoiler MineSweeper text message generator. Generates and copies
+ * fields of with entered contents to user's clip board
  * 
  * @author ItsNorin: <a href="http://github.com/ItsNorin">Github</a>
  */
 public class MineField extends Application {
-	public static final String DEFAULT_BOMB_COUNTS_STR[] = { ":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:",
-			":seven:", ":eight:" };
-	
+	public static final String DEFAULT_BOMB_COUNTS_STR[] = { ":zero:", ":one:", ":two:", ":three:", ":four:", ":five:",
+			":six:", ":seven:", ":eight:" };
+
 	public static final String DEFUALT_BOMB = ":boom:";
 	public static final String SPOILER = "||";
-	
+	public static final String MAX_MESSAGE_LENGTH = "2000";
+
 	public static final TextField[] bombCountTextFields;
 	public static final TextField bombTextField;
-	
+	public static final TextField maxMessageLength;
+	public static boolean includeDescription;
+
+	public final static int TEXT_BOX_WIDTH = 80;
+	public final static String LABEL_STYLE_CSS = "-fx-text-fill: #FFFFFF;";
+	public final static String TEXT_BOX_CSS = "-fx-background-color: #40444b; -fx-text-fill: #FFFFFF;";
+	public final static String BUTTON_CSS = "-fx-background-color: #2f3136; -fx-text-fill: #FFFFFF;";
+
 	static {
+		includeDescription = true;
+
+		maxMessageLength = new TextField();
+		maxMessageLength.setText(MAX_MESSAGE_LENGTH);
+		setTextFieldFormat(maxMessageLength);
+
 		bombTextField = new TextField();
 		bombTextField.setText(DEFUALT_BOMB);
+		setTextFieldFormat(bombTextField);
+
 		bombCountTextFields = new TextField[9];
-		for(int i = 0; i < bombCountTextFields.length; i++) {
+		for (int i = 0; i < bombCountTextFields.length; i++) {
 			bombCountTextFields[i] = new TextField();
 			bombCountTextFields[i].setText(DEFAULT_BOMB_COUNTS_STR[i]);
+			setTextFieldFormat(bombCountTextFields[i]);
 		}
 	}
-	
-	
 
 	public static void main(String[] args) {
 		launch(args);
 	}
-	
+
 	@Override
 	public void start(Stage stage) throws Exception {
 		Pane root = new Pane();
+		root.setStyle("-fx-background-color: #36393f");
 		Scene scene = new Scene(root);
 		stage.setScene(scene);
-		stage.setTitle("Minesweeper");
+		stage.setTitle("Discord Minesweeper");
+		stage.initStyle(StageStyle.UTILITY);
 
-		Label sizeTextBoxMessagea = new Label();
-		sizeTextBoxMessagea.setText("Enter field size (5-16)");
+		Label sizeTextBoxLabel = new Label();
+		sizeTextBoxLabel.setText("Enter field size (5-20)");
+		sizeTextBoxLabel.setStyle(LABEL_STYLE_CSS);
 
 		TextField sizeTextBox = new TextField();
-		sizeTextBox.setPrefWidth(50);
-		sizeTextBox.setMinWidth(50);
-		sizeTextBox.setText("15");
+		sizeTextBox.setText("10");
+		setTextFieldFormat(sizeTextBox);
 
 		Label latestMessage = new Label();
 
-		Button button = new Button();
-		button.setText("Generate and copy field.");
+		Button generateFieldButton = new Button();
+		generateFieldButton.setText("Generate and copy field.");
+		generateFieldButton.setStyle(BUTTON_CSS);
 
-		button.setOnAction(new EventHandler<ActionEvent>() {
+		generateFieldButton.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent event) {
 				final String userText = sizeTextBox.getText();
+				final String userMsgLength = getTextFieldStr_setDefault(maxMessageLength, MAX_MESSAGE_LENGTH);
 
 				int fieldSize = -1;
 
-				if (userText.length() > 0)
-					fieldSize = Integer.parseInt(userText);
-				else {
+				if (userText.length() <= 0) {
 					latestMessage.setText("Enter a size!");
-					latestMessage.setTextFill(Color.RED);
-				}
-
-				if (fieldSize >= 5 && fieldSize <= 16) {
-					String field = getNewMineField(fieldSize, fieldSize * fieldSize / 9, 2000);
-					;
-					Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-					StringSelection strSel = new StringSelection(field);
-					clipboard.setContents(strSel, null);
-					latestMessage.setText("Copied to clipboard!");
-					latestMessage.setTextFill(Color.GREEN);
+					latestMessage.setTextFill(Color.ORANGERED);
+				} else if (Integer.parseInt(userMsgLength) < 100) {
+					latestMessage.setText("Message length less than 100!");
+					latestMessage.setTextFill(Color.ORANGERED);
 				} else {
-					latestMessage.setText("Field size must be between 5 and 16!");
-					latestMessage.setTextFill(Color.RED);
+					fieldSize = Integer.parseInt(userText);
+					if (fieldSize < 5 || fieldSize > 20) {
+						latestMessage.setText("Field size must be between 5 and 20!");
+						latestMessage.setTextFill(Color.ORANGERED);
+					} else {
+						String field = getNewMineField(fieldSize, fieldSize * fieldSize / 9,
+								Integer.parseInt(userMsgLength));
+						Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+						StringSelection strSel = new StringSelection(field);
+						clipboard.setContents(strSel, null);
+						latestMessage.setText("Copied to clipboard!");
+						latestMessage.setTextFill(Color.LIME);
+					}
 				}
+			}
+		});
+
+		Button includeFieldDescriptionButton = new Button();
+		includeFieldDescriptionButton.setText("Toggle: Including description");
+		includeFieldDescriptionButton.setStyle(BUTTON_CSS);
+		includeFieldDescriptionButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event) {
+				includeDescription = !includeDescription;
+				if (includeDescription)
+					includeFieldDescriptionButton.setText("Toggle: Including description");
+				else
+					includeFieldDescriptionButton.setText("Toggle: Not including description");
 			}
 		});
 
 		GridPane grid = new GridPane();
 		grid.setHgap(10);
-		grid.setVgap(10);
-		grid.setPadding(new Insets(10, 10, 10, 10));
-		grid.add(sizeTextBoxMessagea, 0, 0, 2, 1);
-		grid.add(sizeTextBox, 0, 1);
-		grid.add(button, 1, 1);
-		grid.add(latestMessage, 0, 2, 2, 1);
-		
+		grid.setVgap(5);
+		grid.setPadding(new Insets(10, 10, 20, 10));
+
+		grid.add(sizeTextBoxLabel, 0, 0);
+		grid.add(sizeTextBox, 1, 0);
+
+		GridPane.setHalignment(generateFieldButton, HPos.CENTER);
+		grid.add(generateFieldButton, 0, grid.getRowCount(), 2, 1);
+
+		GridPane.setHalignment(latestMessage, HPos.CENTER);
+		grid.add(latestMessage, 0, grid.getRowCount(), 2, 1);
+
+		GridPane.setHalignment(includeFieldDescriptionButton, HPos.CENTER);
+		grid.add(includeFieldDescriptionButton, 0, grid.getRowCount(), 2, 1);
+
 		Label bombLabel = new Label();
 		bombLabel.setText("Bomb");
-		grid.add(bombLabel, 0, 3);
-		grid.add(bombTextField, 1, 3);
-		
-		for(int i = 0; i < bombCountTextFields.length; i++) {
+		bombLabel.setStyle(LABEL_STYLE_CSS);
+		GridPane.setHalignment(bombLabel, HPos.CENTER);
+		grid.add(bombLabel, 0, grid.getRowCount());
+		grid.add(bombTextField, 1, grid.getRowCount() - 1);
+
+		for (int i = 0; i < bombCountTextFields.length; i++) {
 			Label number = new Label();
 			number.setText(Integer.toString(i));
-			grid.add(bombCountTextFields[i], 1, 4+i);
-			grid.add(number, 0, 4+i);
+			number.setStyle(LABEL_STYLE_CSS);
+			GridPane.setHalignment(number, HPos.CENTER);
+			grid.add(bombCountTextFields[i], 1, grid.getRowCount());
+			grid.add(number, 0, grid.getRowCount() - 1);
 		}
+
+		Label maxMessageLengthLabel = new Label();
+		maxMessageLengthLabel.setText("Max msg length");
+		maxMessageLengthLabel.setStyle(LABEL_STYLE_CSS);
+		GridPane.setHalignment(maxMessageLengthLabel, HPos.CENTER);
+		grid.add(maxMessageLengthLabel, 0, grid.getRowCount());
+		grid.add(maxMessageLength, 1, grid.getRowCount() - 1);
 
 		root.getChildren().add(grid);
 
 		stage.setResizable(false);
 		stage.show();
 	}
-	
+
+	public static void setTextFieldFormat(TextField t) {
+		t.setStyle(TEXT_BOX_CSS);
+		t.setMinWidth(TEXT_BOX_WIDTH);
+		t.setPrefWidth(TEXT_BOX_WIDTH);
+	}
+
+	/**
+	 * @param t           A text field
+	 * @param defaultText default value to set if text field is empty
+	 * @return contents of text field, defaultText if field is empty
+	 */
+	public static String getTextFieldStr_setDefault(final TextField t, final String defaultText) {
+		if (t.getText().length() <= 0)
+			t.setText(defaultText);
+		return t.getText();
+	}
+
 	/**
 	 * adds contiguous region of empty points from given x and y to emptyNeighbors
 	 */
 	protected static void addEmptyNeighbors(ArrayList<Point> empty, int x, int y, ArrayList<Point> emptyNeighbors) {
 		for (int i = -1; i <= 1; i++)
-			for (int j = -1; j <= 1; j++) {
+			for (int j = -1; j <= 1; j++)
 				if (i != j) {
 					Point p = new Point(x + i, y + j);
 					if (empty.contains(p) && !emptyNeighbors.contains(p)) {
@@ -142,7 +213,6 @@ public class MineField extends Application {
 						addEmptyNeighbors(empty, p.x, p.y, emptyNeighbors);
 					}
 				}
-			}
 	}
 
 	/** Expands selection in +-1 in x and y */
@@ -159,7 +229,7 @@ public class MineField extends Application {
 	}
 
 	/** number of bombs around given point */
-	protected static int getNearbyBombCount(ArrayList<Point> bombs, Point p) {
+	protected static int getNearbyBombCount(final ArrayList<Point> bombs, final Point p) {
 		int bombCount = 0;
 		for (int i = -1; i <= 1; i++)
 			for (int j = -1; j <= 1; j++)
@@ -180,26 +250,6 @@ public class MineField extends Application {
 		return empty;
 	}
 
-	public static String getBombStr() {
-		String text = DEFUALT_BOMB;
-		final String tfStr = bombTextField.getText();
-		if(tfStr.length() > 0)
-			text = tfStr;
-		else
-			bombTextField.setText(text);
-		return text;
-	}
-	
-	public static String getBombCountStr(int n) {
-		String text = DEFAULT_BOMB_COUNTS_STR[n];
-		final String tfStr = bombCountTextFields[n].getText();
-		if(tfStr.length() > 0)
-			text = tfStr;
-		else
-			bombCountTextFields[n].setText(text);
-		return text;
-	}
-	
 	/**
 	 * generates text version of minesweeper shorter than given maxStringLength.
 	 * Size and number of mines may be smaller than what is given if it is
@@ -217,7 +267,9 @@ public class MineField extends Application {
 			// try to make field with 1 less mine until there is a tile with no nearby bombs
 			do {
 				// field description
-				result = "Size: " + Integer.toString(size) + "\tMines: " + Integer.toString(noOfMines) + "\n";
+				if (includeDescription)
+					result += "Size: " + Integer.toString(size) + "\tMines: " + Integer.toString(noOfMines) + "\n";
+
 				// set mines
 				bombs.clear();
 				for (int i = 0; i < noOfMines; i++) {
@@ -244,7 +296,16 @@ public class MineField extends Application {
 			for (int x = 0; x < size; x++) {
 				for (int y = 0; y < size; y++) {
 					Point p = new Point(x, y);
-					String cellStr = bombs.contains(p) ? getBombStr() : getBombCountStr(getNearbyBombCount(bombs, p));
+					String cellStr;
+
+					if (bombs.contains(p)) {
+						cellStr = getTextFieldStr_setDefault(bombTextField, DEFUALT_BOMB);
+					} else {
+						int bombCount = getNearbyBombCount(bombs, p);
+						cellStr = getTextFieldStr_setDefault(bombCountTextFields[bombCount],
+								DEFAULT_BOMB_COUNTS_STR[bombCount]);
+					}
+
 					if (!leaveUnspoiled.contains(p))
 						cellStr = SPOILER + cellStr + SPOILER;
 					result += cellStr;
