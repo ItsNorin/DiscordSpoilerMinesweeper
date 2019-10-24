@@ -1,4 +1,4 @@
 # DiscordSpoilerMinesweeper
-Turns Minesweeper into a message you can post in discord.
+A tool that generates Minesweeper games that you can spam at others in Discord.
 
-[Open in onlinegdb](https://onlinegdb.com/ryQFCXldH)
+Allows for customization of each emote.
