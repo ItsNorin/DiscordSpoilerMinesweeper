@@ -47,6 +47,7 @@ public class MineField extends Application {
 	public static final TextField bombTextField;
 	public static final TextField maxMessageLength;
 	public static final TextField sizeTextBox;
+	public static final TextField mineDensityTextBox;
 	public static final Label latestMessage;
 
 	public static boolean includeDescription;
@@ -55,13 +56,8 @@ public class MineField extends Application {
 		includeDescription = true;
 
 		sizeTextBox = makeTextField("10");
-		sizeTextBox.setOnKeyPressed(e -> {
-			if (e.getCode() == KeyCode.ENTER)
-				generateField();
-		});
-
+		mineDensityTextBox = makeTextField("1");
 		latestMessage = new Label();
-
 		maxMessageLength = makeTextField(MAX_MESSAGE_LENGTH);
 		bombTextField = makeTextField(DEFUALT_BOMB);
 
@@ -104,8 +100,11 @@ public class MineField extends Application {
 		grid.setVgap(5);
 		grid.setPadding(new Insets(10, 10, 20, 10));
 
-		grid.add(makeCenteredLabel("Enter field size (5-20):"), 0, 0);
+		grid.add(makeCenteredLabel("Enter field size (5-20)"), 0, 0);
 		grid.add(sizeTextBox, 1, 0);
+
+		grid.add(makeCenteredLabel("Mine density (0.5-4)"), 0, grid.getRowCount());
+		grid.add(mineDensityTextBox, 1, grid.getRowCount() - 1);
 
 		GridPane.setHalignment(generateFieldButton, HPos.CENTER);
 		grid.add(generateFieldButton, 0, grid.getRowCount(), 2, 1);
@@ -136,6 +135,7 @@ public class MineField extends Application {
 	public static void generateField() {
 		final String sizeTextBoxStr = sizeTextBox.getText();
 		final String mesgLengthStr = getTextFieldStr_setDefault(maxMessageLength, MAX_MESSAGE_LENGTH);
+		final String mineDensityStr = getTextFieldStr_setDefault(mineDensityTextBox, "1");
 
 		if (sizeTextBoxStr.length() <= 0) {
 			latestMessage.setText("Enter a size!");
@@ -146,6 +146,16 @@ public class MineField extends Application {
 				msgLength = Integer.parseInt(mesgLengthStr);
 			} catch (Exception e) {
 			}
+
+			double mineDensity = 1;
+			try {
+				mineDensity = Double.parseDouble(mineDensityStr);
+			} catch (Exception e) {
+			}
+			
+			mineDensity = Math.max(mineDensity, 0.5);
+			mineDensity = Math.min(mineDensity, 4);
+			mineDensityTextBox.setText(Double.toString((double)((int)(mineDensity*100))/100));
 
 			if (msgLength < 100) {
 				latestMessage.setText("Message length less than 100!");
@@ -161,7 +171,8 @@ public class MineField extends Application {
 					latestMessage.setText("Field size must be between 5 and 20!");
 					latestMessage.setTextFill(Color.ORANGERED);
 				} else {
-					String field = getNewMineField(fieldSize, fieldSize * fieldSize / 9, msgLength);
+					String field = getNewMineField(fieldSize, (int) (mineDensity * fieldSize * fieldSize / 9),
+							msgLength);
 					Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 					StringSelection strSel = new StringSelection(field);
 					clipboard.setContents(strSel, null);
@@ -192,13 +203,17 @@ public class MineField extends Application {
 		t.setMinWidth(TEXT_BOX_WIDTH);
 		t.setPrefWidth(TEXT_BOX_WIDTH);
 		addMouseOverStyleChange(t, TEXT_BOX_HOVER_CSS, TEXT_BOX_DEFAULT_CSS);
+		t.setOnKeyPressed(e -> {
+			if (e.getCode() == KeyCode.ENTER)
+				generateField();
+		});
 		return t;
 
 	}
 
 	/**
-	 * @param n any node
-	 * @param mouseOverCSS CSS to be used when mouse is over node
+	 * @param n             any node
+	 * @param mouseOverCSS  CSS to be used when mouse is over node
 	 * @param mouseLeaveCSS Default CSS, used whenever mouse isn't on node
 	 */
 	public static void addMouseOverStyleChange(Node n, String mouseOverCSS, String mouseLeaveCSS) {
@@ -284,10 +299,6 @@ public class MineField extends Application {
 		do {
 			// try to make field with 1 less mine until there is a tile with no nearby bombs
 			do {
-				// field description
-				if (includeDescription)
-					result += "Size: " + Integer.toString(size) + "\tMines: " + Integer.toString(noOfMines) + "\n";
-
 				// set mines
 				bombs.clear();
 				for (int i = 0; i < noOfMines; i++) {
@@ -306,9 +317,15 @@ public class MineField extends Application {
 					start = emptyTiles.get(rand.nextInt(emptyTiles.size()));
 			} while (emptyTiles.size() == 0);
 
+			// field description
+			result = (includeDescription)
+					? "Size: " + Integer.toString(size) + "\tMines: " + Integer.toString(noOfMines) + "\n"
+					: "";
+
 			ArrayList<Point> leaveUnspoiled = new ArrayList<Point>();
 			addEmptyNeighbors(emptyTiles, start.x, start.y, leaveUnspoiled);
 			leaveUnspoiled = expandByOne(leaveUnspoiled);
+			leaveUnspoiled.add(start);
 
 			// create string
 			for (int x = 0; x < size; x++) {
