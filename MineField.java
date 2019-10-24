@@ -7,14 +7,14 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import javafx.application.Application;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
@@ -35,33 +35,39 @@ public class MineField extends Application {
 	public static final String SPOILER = "||";
 	public static final String MAX_MESSAGE_LENGTH = "2000";
 
+	public final static int TEXT_BOX_WIDTH = 80;
+
+	public final static String LABEL_STYLE_CSS = "-fx-text-fill: #FFFFFF;";
+	public final static String TEXT_BOX_DEFAULT_CSS = "-fx-background-color: #40444b; -fx-text-fill: #FFFFFF;";
+	public final static String TEXT_BOX_HOVER_CSS = "-fx-background-color: #5e636a; -fx-text-fill: #FFFFFF;";
+	public final static String BUTTON_DEFAULT_CSS = "-fx-background-color: #2f3136; -fx-text-fill: #FFFFFF;";
+	public final static String BUTTON_HOVER_CSS = "-fx-background-color: #7289DA; -fx-text-fill: #FFFFFF;";
+
 	public static final TextField[] bombCountTextFields;
 	public static final TextField bombTextField;
 	public static final TextField maxMessageLength;
-	public static boolean includeDescription;
+	public static final TextField sizeTextBox;
+	public static final Label latestMessage;
 
-	public final static int TEXT_BOX_WIDTH = 80;
-	public final static String LABEL_STYLE_CSS = "-fx-text-fill: #FFFFFF;";
-	public final static String TEXT_BOX_CSS = "-fx-background-color: #40444b; -fx-text-fill: #FFFFFF;";
-	public final static String BUTTON_CSS = "-fx-background-color: #2f3136; -fx-text-fill: #FFFFFF;";
+	public static boolean includeDescription;
 
 	static {
 		includeDescription = true;
 
-		maxMessageLength = new TextField();
-		maxMessageLength.setText(MAX_MESSAGE_LENGTH);
-		setTextFieldFormat(maxMessageLength);
+		sizeTextBox = makeTextField("10");
+		sizeTextBox.setOnKeyPressed(e -> {
+			if (e.getCode() == KeyCode.ENTER)
+				generateField();
+		});
 
-		bombTextField = new TextField();
-		bombTextField.setText(DEFUALT_BOMB);
-		setTextFieldFormat(bombTextField);
+		latestMessage = new Label();
+
+		maxMessageLength = makeTextField(MAX_MESSAGE_LENGTH);
+		bombTextField = makeTextField(DEFUALT_BOMB);
 
 		bombCountTextFields = new TextField[9];
-		for (int i = 0; i < bombCountTextFields.length; i++) {
-			bombCountTextFields[i] = new TextField();
-			bombCountTextFields[i].setText(DEFAULT_BOMB_COUNTS_STR[i]);
-			setTextFieldFormat(bombCountTextFields[i]);
-		}
+		for (int i = 0; i < bombCountTextFields.length; i++)
+			bombCountTextFields[i] = makeTextField(DEFAULT_BOMB_COUNTS_STR[i]);
 	}
 
 	public static void main(String[] args) {
@@ -77,64 +83,20 @@ public class MineField extends Application {
 		stage.setTitle("Discord Minesweeper");
 		stage.initStyle(StageStyle.UTILITY);
 
-		Label sizeTextBoxLabel = new Label();
-		sizeTextBoxLabel.setText("Enter field size (5-20)");
-		sizeTextBoxLabel.setStyle(LABEL_STYLE_CSS);
-
-		TextField sizeTextBox = new TextField();
-		sizeTextBox.setText("10");
-		setTextFieldFormat(sizeTextBox);
-
-		Label latestMessage = new Label();
-
 		Button generateFieldButton = new Button();
-		generateFieldButton.setText("Generate and copy field.");
-		generateFieldButton.setStyle(BUTTON_CSS);
-
-		generateFieldButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent event) {
-				final String userText = sizeTextBox.getText();
-				final String userMsgLength = getTextFieldStr_setDefault(maxMessageLength, MAX_MESSAGE_LENGTH);
-
-				int fieldSize = -1;
-
-				if (userText.length() <= 0) {
-					latestMessage.setText("Enter a size!");
-					latestMessage.setTextFill(Color.ORANGERED);
-				} else if (Integer.parseInt(userMsgLength) < 100) {
-					latestMessage.setText("Message length less than 100!");
-					latestMessage.setTextFill(Color.ORANGERED);
-				} else {
-					fieldSize = Integer.parseInt(userText);
-					if (fieldSize < 5 || fieldSize > 20) {
-						latestMessage.setText("Field size must be between 5 and 20!");
-						latestMessage.setTextFill(Color.ORANGERED);
-					} else {
-						String field = getNewMineField(fieldSize, fieldSize * fieldSize / 9,
-								Integer.parseInt(userMsgLength));
-						Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-						StringSelection strSel = new StringSelection(field);
-						clipboard.setContents(strSel, null);
-						latestMessage.setText("Copied to clipboard!");
-						latestMessage.setTextFill(Color.LIME);
-					}
-				}
-			}
-		});
+		generateFieldButton.setText("Generate and copy field");
+		addMouseOverStyleChange(generateFieldButton, BUTTON_HOVER_CSS, BUTTON_DEFAULT_CSS);
+		generateFieldButton.setOnAction(e -> generateField());
 
 		Button includeFieldDescriptionButton = new Button();
 		includeFieldDescriptionButton.setText("Toggle: Including description");
-		includeFieldDescriptionButton.setStyle(BUTTON_CSS);
-		includeFieldDescriptionButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent event) {
-				includeDescription = !includeDescription;
-				if (includeDescription)
-					includeFieldDescriptionButton.setText("Toggle: Including description");
-				else
-					includeFieldDescriptionButton.setText("Toggle: Not including description");
-			}
+		addMouseOverStyleChange(includeFieldDescriptionButton, BUTTON_HOVER_CSS, BUTTON_DEFAULT_CSS);
+		includeFieldDescriptionButton.setOnAction(e -> {
+			includeDescription = !includeDescription;
+			if (includeDescription)
+				includeFieldDescriptionButton.setText("Toggle: Including description");
+			else
+				includeFieldDescriptionButton.setText("Toggle: Not including description");
 		});
 
 		GridPane grid = new GridPane();
@@ -142,7 +104,7 @@ public class MineField extends Application {
 		grid.setVgap(5);
 		grid.setPadding(new Insets(10, 10, 20, 10));
 
-		grid.add(sizeTextBoxLabel, 0, 0);
+		grid.add(makeCenteredLabel("Enter field size (5-20):"), 0, 0);
 		grid.add(sizeTextBox, 1, 0);
 
 		GridPane.setHalignment(generateFieldButton, HPos.CENTER);
@@ -154,27 +116,15 @@ public class MineField extends Application {
 		GridPane.setHalignment(includeFieldDescriptionButton, HPos.CENTER);
 		grid.add(includeFieldDescriptionButton, 0, grid.getRowCount(), 2, 1);
 
-		Label bombLabel = new Label();
-		bombLabel.setText("Bomb");
-		bombLabel.setStyle(LABEL_STYLE_CSS);
-		GridPane.setHalignment(bombLabel, HPos.CENTER);
-		grid.add(bombLabel, 0, grid.getRowCount());
+		grid.add(makeCenteredLabel("Bomb"), 0, grid.getRowCount());
 		grid.add(bombTextField, 1, grid.getRowCount() - 1);
 
 		for (int i = 0; i < bombCountTextFields.length; i++) {
-			Label number = new Label();
-			number.setText(Integer.toString(i));
-			number.setStyle(LABEL_STYLE_CSS);
-			GridPane.setHalignment(number, HPos.CENTER);
 			grid.add(bombCountTextFields[i], 1, grid.getRowCount());
-			grid.add(number, 0, grid.getRowCount() - 1);
+			grid.add(makeCenteredLabel(Integer.toString(i)), 0, grid.getRowCount() - 1);
 		}
 
-		Label maxMessageLengthLabel = new Label();
-		maxMessageLengthLabel.setText("Max msg length");
-		maxMessageLengthLabel.setStyle(LABEL_STYLE_CSS);
-		GridPane.setHalignment(maxMessageLengthLabel, HPos.CENTER);
-		grid.add(maxMessageLengthLabel, 0, grid.getRowCount());
+		grid.add(makeCenteredLabel("Max msg. length"), 0, grid.getRowCount());
 		grid.add(maxMessageLength, 1, grid.getRowCount() - 1);
 
 		root.getChildren().add(grid);
@@ -183,10 +133,78 @@ public class MineField extends Application {
 		stage.show();
 	}
 
-	public static void setTextFieldFormat(TextField t) {
-		t.setStyle(TEXT_BOX_CSS);
+	public static void generateField() {
+		final String sizeTextBoxStr = sizeTextBox.getText();
+		final String mesgLengthStr = getTextFieldStr_setDefault(maxMessageLength, MAX_MESSAGE_LENGTH);
+
+		if (sizeTextBoxStr.length() <= 0) {
+			latestMessage.setText("Enter a size!");
+			latestMessage.setTextFill(Color.ORANGERED);
+		} else {
+			int msgLength = 0;
+			try {
+				msgLength = Integer.parseInt(mesgLengthStr);
+			} catch (Exception e) {
+			}
+
+			if (msgLength < 100) {
+				latestMessage.setText("Message length less than 100!");
+				latestMessage.setTextFill(Color.ORANGERED);
+			} else {
+				int fieldSize = 0;
+				try {
+					fieldSize = Integer.parseInt(sizeTextBoxStr);
+				} catch (Exception e) {
+				}
+
+				if (fieldSize < 5 || fieldSize > 20) {
+					latestMessage.setText("Field size must be between 5 and 20!");
+					latestMessage.setTextFill(Color.ORANGERED);
+				} else {
+					String field = getNewMineField(fieldSize, fieldSize * fieldSize / 9, msgLength);
+					Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+					StringSelection strSel = new StringSelection(field);
+					clipboard.setContents(strSel, null);
+					latestMessage.setText("Copied to clipboard!");
+					latestMessage.setTextFill(Color.web("#819dff"));
+				}
+			}
+		}
+	}
+
+	/**
+	 * @param text Text the label will contain
+	 * @return new centered and formatted label containing given text
+	 */
+	public static Label makeCenteredLabel(String text) {
+		Label l = new Label(text);
+		l.setStyle(LABEL_STYLE_CSS);
+		GridPane.setHalignment(l, HPos.CENTER);
+		return l;
+	}
+
+	/**
+	 * @param text Text the text field will contain initially
+	 * @return new properly formatted text field
+	 */
+	public static TextField makeTextField(String text) {
+		TextField t = new TextField(text);
 		t.setMinWidth(TEXT_BOX_WIDTH);
 		t.setPrefWidth(TEXT_BOX_WIDTH);
+		addMouseOverStyleChange(t, TEXT_BOX_HOVER_CSS, TEXT_BOX_DEFAULT_CSS);
+		return t;
+
+	}
+
+	/**
+	 * @param n any node
+	 * @param mouseOverCSS CSS to be used when mouse is over node
+	 * @param mouseLeaveCSS Default CSS, used whenever mouse isn't on node
+	 */
+	public static void addMouseOverStyleChange(Node n, String mouseOverCSS, String mouseLeaveCSS) {
+		n.setOnMouseEntered(e -> n.setStyle(mouseOverCSS));
+		n.setOnMouseExited(e -> n.setStyle(mouseLeaveCSS));
+		n.setStyle(mouseLeaveCSS);
 	}
 
 	/**
